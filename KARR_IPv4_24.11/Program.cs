@@ -1,10 +1,15 @@
-﻿using System.Text.RegularExpressions;
+﻿using KARR_IPv4_24._11;
+using System.Text.RegularExpressions;
 
 internal class Program
 {
     private static void Main(string[] args)
     {
-        var ip_dec = string.Empty;
+        Adresse decIp = new();
+        Adresse decSnm = new();
+        Cidr binCidr = new();
+
+        var inputString = string.Empty;
         var snm_dec = string.Empty;
         var snm_bin = string.Empty;
         var input = '\0'; // \0 char-Äquivalent zu string.Empty
@@ -12,11 +17,12 @@ internal class Program
         while (true)
         {
             Console.Write("Bitte die IP-Adresse eingeben: ");
-            ip_dec = Console.ReadLine();
+            inputString = Console.ReadLine();
 
-            Match match = Regex.Match(ip_dec, @"^(((?!25?[6 - 9])[12]\d|[1-9])?\d\.?\b){4}$"); // Regex von Stackoverflow, prüft ob Input gültig
+            Match match = Regex.Match(inputString!, @"^(((?!25?[6 - 9])[12]\d|[1-9])?\d\.?\b){4}$"); // Regex von Stackoverflow, prüft ob Input gültig
             if (match.Success)
             {
+                decIp = new Adresse(inputString!);
                 break;
             }
             else
@@ -24,8 +30,6 @@ internal class Program
                 Console.WriteLine("Bitte eine gültige IP-Adresse im Format XXX.XXX.XXX.XXX angeben!\n");
             }
         }
-
-        var ip_bin = dez_to_bin(ip_dec.Split('.'));
 
         while (true)
         {
@@ -50,9 +54,10 @@ internal class Program
                 Console.Write("Bitte die Subnetzmaske angeben: ");
                 snm_dec = Console.ReadLine();
 
-                Match match = Regex.Match(snm_dec, @"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$"); // Regex von Stackoverflow, prüft ob Input gültig
+                Match match = Regex.Match(snm_dec!, @"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$"); // Regex von Stackoverflow, prüft ob Input gültig
                 if (match.Success)
                 {
+                    decSnm = new Adresse(snm_dec!);
                     break;
                 }
                 else
@@ -60,9 +65,8 @@ internal class Program
                     Console.WriteLine("Bitte eine gültige Subnetzmaske im Format XXX.XXX.XXX.XXX angeben!\n");
                 }
             }
-
-            snm_bin = dez_to_bin(snm_dec.Split('.'));
         }
+
         else
         {
             int cidr = -1;
@@ -72,10 +76,11 @@ internal class Program
                 Console.Write("Bitte die CIDR-Suffix angeben: /");
                 try
                 {
-                    cidr = int.Parse(Console.ReadLine());
+                    cidr = int.Parse(Console.ReadLine()!);
 
                     if (cidr <= 32 && cidr >= 0)
                     {
+                        binCidr = new Cidr(cidr);
                         break;
                     }
                     else
@@ -88,21 +93,19 @@ internal class Program
                     Console.WriteLine("Fehler: " + x.Message);
                 }
             }
-
-            snm_bin = CIDR_to_bin(cidr);
         }
 
-        var id_dec = adressen_calc(ip_bin, snm_bin);
-        var bca_dec = adressen_calc(ip_bin, snm_bin, true);
-        var host_range = range_calc(snm_bin);
-        var first_host = host_calc(id_dec, true);
-        var last_host = host_calc(bca_dec, false);
+        Adresse decNetzId = new Adresse(adressen_calc(decIp.binAdresse!, decSnm.binAdresse!, false));
+        Adresse decBroadcast = new Adresse(adressen_calc(decIp.binAdresse!, decSnm.binAdresse!, true));
+        var host_range = range_calc(decSnm.binAdresse!);
+        Adresse firstHost = new Adresse(host_calc(decNetzId.decAdresse!, true));
+        Adresse lastHost = new Adresse(host_calc(decBroadcast.decAdresse!, false));
 
-        Console.WriteLine("\nNetz-ID: " + id_dec +
-                            "\nBroadcastadresse:" + bca_dec +
+        Console.WriteLine("\nNetz-ID: " + decNetzId.decAdresse + " (" + decNetzId.binAdresse + ")" +
+                            "\nBroadcastadresse:" + decBroadcast.decAdresse + " (" + decBroadcast.binAdresse + ")" +
                             "\nHost-Range: " + host_range +
-                            "\nErster Host: " + first_host +
-                            "\nLetzter Host: " + last_host);
+                            "\nErster Host: " + firstHost.decAdresse + " (" + firstHost.binAdresse + ")" +
+                            "\nLetzter Host: " + lastHost.decAdresse + " (" + lastHost.binAdresse + ")");
     }
     public static string dez_to_bin(string[] input)
     {
