@@ -52,7 +52,7 @@ namespace KARR_IPv4_24
                     Console.Write("Bitte die Subnetzmaske angeben: ");
                     snm_dec = Console.ReadLine();
 
-                    Match match = Regex.Match(snm_dec, @"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$");
+                    Match match = Regex.Match(snm_dec, @"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$"); // Regex von Stackoverflow, prüft ob Input gültig
                     if (match.Success)
                     {
                         break;
@@ -89,7 +89,6 @@ namespace KARR_IPv4_24
                     {
                         Console.WriteLine("Fehler: " + x.Message);
                     }
-                    
                 }
 
                 snm_bin = CIDR_to_bin(cidr);
@@ -155,7 +154,7 @@ namespace KARR_IPv4_24
                 else
                 {
                     // Berechnet Netz-ID durch bitwise AND
-                    ergebnis_okt = Convert.ToInt16(ips, 2) & Convert.ToInt16(ids, 2);
+                    ergebnis_okt = Convert.ToInt16(ips, 2) & Convert.ToInt16(ids, 2); //Int16, weil die Range groß genug ist für den Anwendungszweck
                 }
 
                 calc_adresse += ergebnis_okt.ToString() + ".";
