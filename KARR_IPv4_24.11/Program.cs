@@ -10,6 +10,8 @@ internal class Program
 
         var inputString = string.Empty;
         var input = '\0'; // \0 char-Äquivalent zu string.Empty
+        int inputZahl = -1;
+        int storedCidr = 0;
 
         while (true)
         {
@@ -67,18 +69,17 @@ internal class Program
 
         else
         {
-            int cidr = -1;
-
             while (true)
             {
                 Console.Write("Bitte die CIDR-Suffix angeben: /");
                 try
                 {
-                    cidr = int.Parse(Console.ReadLine()!);
+                    inputZahl = int.Parse(Console.ReadLine()!);
 
-                    if (cidr <= 32 && cidr >= 0)
+                    if (inputZahl <= 32 && inputZahl >= 0)
                     {
-                        decSnm = new Adresse(cidr);
+                        storedCidr = inputZahl;
+                        decSnm = new Adresse(inputZahl);
                         break;
                     }
                     else
@@ -104,6 +105,49 @@ internal class Program
                            $"\nHost-Range: {host_range}" +
                            $"\nErster Host: {firstHost.decAdresse} ({firstHost.binAdresse})" +
                            $"\nLetzter Host: {lastHost.decAdresse} ({lastHost.binAdresse})");
+
+        while (true)
+        {
+            Console.Write("\nSoll das Netz in Subnetze aufgeteilt werden? (Y/N) ");
+            input = Console.ReadKey().KeyChar;
+            Console.WriteLine();
+
+            if (input == 'Y' || input == 'y' || input == 'n' || input == 'N')
+            {
+                break;
+            }
+            else
+            {
+                Console.WriteLine("Bitte entweder mit Y oder N Auswahl treffen.\n");
+            }
+        }
+        if(input == 'Y' || input == 'y')
+        {
+            Adresse SubnetMask = new();
+
+            while (true)
+            {
+                Console.Write("Bitte die Anzahl der gewünschten Subnetze angeben: ");
+                try
+                {
+                    inputZahl = int.Parse(Console.ReadLine()!);
+
+                    if (Math.Log2(inputZahl) <= decSnm.binAdresse.Count('0') && inputZahl >= 0) // Math.Log2(inputZahl) um auf die Benötigten Bits zu kommen
+                    {
+                        SubnetMask = new Adresse(inputZahl+storedCidr);
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Kein plausibler Wert eingegeben.\n");
+                    }
+                }
+                catch (Exception x) // Sollten Buchstaben als Input gegeben werden
+                {
+                    Console.WriteLine("Fehler: " + x.Message);
+                }
+            }
+        }
     }
     
     public static string AdressenCalc(List <byte> ipOktette, List <byte> snmOktette, bool broadcast = false)
