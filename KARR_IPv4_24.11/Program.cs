@@ -99,11 +99,11 @@ internal class Program
         Adresse firstHost = new Adresse(HostCalc(decNetzId.decOktette!, true));
         Adresse lastHost = new Adresse(HostCalc(decBroadcast.decOktette!, false));
 
-        Console.WriteLine("\nNetz-ID: " + decNetzId.decAdresse + " (" + decNetzId.binAdresse + ")" +
-                            "\nBroadcastadresse:" + decBroadcast.decAdresse + " (" + decBroadcast.binAdresse + ")" +
-                            "\nHost-Range: " + host_range +
-                            "\nErster Host: " + firstHost.decAdresse + " (" + firstHost.binAdresse + ")" +
-                            "\nLetzter Host: " + lastHost.decAdresse + " (" + lastHost.binAdresse + ")");
+        Console.WriteLine( $"\nNetz-ID: {decNetzId.decAdresse} ({decNetzId.binAdresse})" +
+                           $"\nBroadcastadresse: {decBroadcast.decAdresse} ({decBroadcast.binAdresse})" +
+                           $"\nHost-Range: {host_range}" +
+                           $"\nErster Host: {firstHost.decAdresse} ({firstHost.binAdresse})" +
+                           $"\nLetzter Host: {lastHost.decAdresse} ({lastHost.binAdresse})");
     }
     
     public static string AdressenCalc(List <byte> ipOktette, List <byte> snmOktette, bool broadcast = false)
