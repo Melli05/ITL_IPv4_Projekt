@@ -5,12 +5,12 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        Adresse decIp = new();
-        Adresse decSnm = new();
+        Adresse decIp;
+        Adresse decSnm;
 
-        var inputString = string.Empty;
-        var input = '\0'; // \0 char-Äquivalent zu string.Empty
-        int inputZahl = -1;
+        string inputString;
+        char input; // \0 char-Äquivalent zu string.Empty
+        int inputZahl;
         int storedCidr = 0;
 
         while (true)
@@ -21,7 +21,7 @@ internal class Program
             Match match = Regex.Match(inputString!, @"^(((?!25?[6 - 9])[12]\d|[1-9])?\d\.?\b){4}$"); // Regex von Stackoverflow, prüft ob Input gültig
             if (match.Success)
             {
-                decIp = new Adresse(inputString!);
+                decIp = new Adresse(inputString!, true);
                 inputString = string.Empty;
                 break;
             }
@@ -57,7 +57,8 @@ internal class Program
                 Match match = Regex.Match(inputString!, @"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$"); // Regex von Stackoverflow, prüft ob Input gültig
                 if (match.Success)
                 {
-                    decSnm = new Adresse(inputString!);
+                    decSnm = new Adresse(inputString!, true);
+                    storedCidr = decSnm.BinAdresse.Count('1');
                     break;
                 }
                 else
@@ -94,17 +95,15 @@ internal class Program
             }
         }
 
-        Adresse decNetzId = new Adresse(AdressenCalc(decIp.decOktette!, decSnm.decOktette!, false));
-        Adresse decBroadcast = new Adresse(AdressenCalc(decIp.decOktette!, decSnm.decOktette!, true));
-        var host_range = RangeCalc(decSnm.binAdresse!);
-        Adresse firstHost = new Adresse(HostCalc(decNetzId.decOktette!, true));
-        Adresse lastHost = new Adresse(HostCalc(decBroadcast.decOktette!, false));
+        Adresse decNetzId = new Adresse(AdressenCalc(decIp.DecOktette!, decSnm.DecOktette!, false), true);
+        Adresse decBroadcast = new Adresse(AdressenCalc(decIp.DecOktette!, decSnm.DecOktette!, true), true);
+        double hostRange = decSnm.RangeCalc();
+        Adresse firstHost = decNetzId + 1;
+        Adresse lastHost = decBroadcast - 1;
 
-        Console.WriteLine( $"\nNetz-ID: {decNetzId.decAdresse} ({decNetzId.binAdresse})" +
-                           $"\nBroadcastadresse: {decBroadcast.decAdresse} ({decBroadcast.binAdresse})" +
-                           $"\nHost-Range: {host_range}" +
-                           $"\nErster Host: {firstHost.decAdresse} ({firstHost.binAdresse})" +
-                           $"\nLetzter Host: {lastHost.decAdresse} ({lastHost.binAdresse})");
+        char Klasse = NetClassIdentifier(decNetzId);
+
+        PrintBlock(decNetzId, decBroadcast, hostRange, firstHost, lastHost, decSnm, Klasse);
 
         while (true)
         {
@@ -112,18 +111,41 @@ internal class Program
             input = Console.ReadKey().KeyChar;
             Console.WriteLine();
 
-            if (input == 'Y' || input == 'y' || input == 'n' || input == 'N')
+            if (input == 'Y' || input == 'y')
             {
+                while (true)
+                {
+                    Console.Write("\nSollen die Subnetze anhand der Hosts oder der Anzahl der Netze aufgeteilt werden? (H/A)\n H - Anzahl der Hosts\n A - Anzahl der Netze\nAuswahl: ");
+                    input = Console.ReadKey().KeyChar;
+                    Console.WriteLine();
+
+                    if (input == 'H' || input == 'h' || input == 'a' || input == 'A')
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Bitte entweder mit Y oder N Auswahl treffen.\n");
+                    }
+                }
                 break;
             }
+
+            else if (input == 'N' || input == 'n')
+            {
+                Console.WriteLine("\nProgramm beendet.\nFenster kann jetzt geschlossen werden.");
+                break;
+            }
+
             else
             {
                 Console.WriteLine("Bitte entweder mit Y oder N Auswahl treffen.\n");
             }
         }
-        if(input == 'Y' || input == 'y')
+        if(input == 'A' || input == 'a')
         {
-            Adresse SubnetMask = new();
+            Adresse SubnetMask;
+            List<Adresse> SubnetIDs = new();
 
             while (true)
             {
@@ -132,9 +154,90 @@ internal class Program
                 {
                     inputZahl = int.Parse(Console.ReadLine()!);
 
-                    if (Math.Log2(inputZahl) <= decSnm.binAdresse.Count('0') && inputZahl >= 0) // Math.Log2(inputZahl) um auf die Benötigten Bits zu kommen
+                    if (inputZahl <= Math.Pow(2, decSnm.BinAdresse.Count('0')) && inputZahl >= 0) // Math.Log2(inputZahl) um auf die Benötigten Bits zu kommen
                     {
-                        SubnetMask = new Adresse(inputZahl+storedCidr);
+                        SubnetMask = new Adresse((int)Math.Ceiling(Math.Log2(inputZahl))+storedCidr);
+                        double HostRange = SubnetMask.RangeCalc();
+
+                        if (HostRange > 0)
+                        {
+                            SubnetIDs = decSnm.SubnetCalc(inputZahl, decNetzId, storedCidr);
+                            Adresse SubnetBroadcast = new();
+                            Adresse SubnetFirstHosts = new();
+                            Adresse SubnetLastHosts = new();
+
+                            Klasse = NetClassIdentifier(SubnetIDs[0]);
+
+                            int count = 1;
+
+                            foreach (Adresse adresse in SubnetIDs)
+                            {
+                                SubnetBroadcast = new Adresse(AdressenCalc(adresse.DecOktette, SubnetMask.DecOktette, true), true);
+                                SubnetFirstHosts = adresse + 1;
+                                SubnetLastHosts = SubnetBroadcast - 1;
+
+                                Console.WriteLine($"\n{count}. Subnetz:");
+                                PrintBlock(adresse, SubnetBroadcast, HostRange, SubnetFirstHosts, SubnetLastHosts, SubnetMask, Klasse);
+                                count++;
+                            }
+
+                            Console.WriteLine("\nProgramm beendet.\nFenster kann jetzt geschlossen werden.");
+                            break;
+                        }
+                        else
+                        {
+                            Console.WriteLine("\nZu viele Netze, es wären keine Hosts verfügbar!");
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Kein plausibler Wert eingegeben.\n");
+                    }
+                }
+                catch (FormatException) // Sollten Buchstaben als Input gegeben werden
+                {
+                    Console.WriteLine("Es wurde keine Zahl eingetippt.");
+                }
+            }
+        }
+        if (input == 'H' || input == 'h') // Muss noch ausprogrammiert werden
+        {
+            Adresse SubnetMask;
+            List<Adresse> SubnetIDs = new();
+
+            while (true)
+            {
+                Console.Write("Bitte die Anzahl der gewünschten Hosts angeben: ");
+                try
+                {
+                    inputZahl = int.Parse(Console.ReadLine()!);
+
+                    if (inputZahl <= Math.Pow(2, decSnm.BinAdresse.Count('0')) && inputZahl >= 0) // Math.Log2(inputZahl) um auf die Benötigten Bits zu kommen
+                    {
+                        SubnetMask = new Adresse((int)Math.Ceiling(Math.Log2(inputZahl)) + storedCidr);
+                        SubnetIDs = decSnm.SubnetCalc(inputZahl, decNetzId, storedCidr);
+                        Adresse SubnetBroadcast = new();
+                        Adresse SubnetFirstHosts = new();
+                        Adresse SubnetLastHosts = new();
+
+                        double HostRange = SubnetMask.RangeCalc();
+                        Klasse = NetClassIdentifier(SubnetIDs[0]);
+
+                        int count = 1;
+
+                        foreach (Adresse adresse in SubnetIDs)
+                        {
+                            SubnetBroadcast = new Adresse(AdressenCalc(adresse.DecOktette, SubnetMask.DecOktette, true), true);
+                            SubnetFirstHosts = adresse + 1;
+                            SubnetLastHosts = SubnetBroadcast - 1;
+
+                            Console.WriteLine($"\n{count}. Subnetz:");
+                            PrintBlock(adresse, SubnetBroadcast, HostRange, SubnetFirstHosts, SubnetLastHosts, SubnetMask, Klasse);
+                            count++;
+                        }
+
+                        Console.WriteLine("\nProgramm beendet.\nFenster kann jetzt geschlossen werden.");
                         break;
                     }
                     else
@@ -156,7 +259,7 @@ internal class Program
 
         for (int i = 0; i < ipOktette.Count; i++)
         {
-            int ergebnis_okt = 0;
+            int ergebnis_okt;
 
             if (broadcast)
             {
@@ -175,26 +278,33 @@ internal class Program
         return calc_adresse;
     }
 
-    public static double RangeCalc(string snm)
+    public static char NetClassIdentifier(Adresse NetzID)
     {
-        int zero_count = snm.Replace(".", "").Count('0'); // Zählt 0 für Host-Teil
-
-        return Math.Pow(2, zero_count) - 2;
+        int dot = NetzID.DecAdresse.IndexOf(".");
+        switch (byte.Parse(NetzID.DecAdresse.Remove(dot)))
+        {
+            case <128:
+                return 'A';
+            case <192:
+                return 'B';
+            case <224:
+                return 'C';
+            case <240:
+                return 'D';
+            default:
+                return 'E';
+        }
     }
 
-    public static string HostCalc(List <byte> oktette, bool first)
+    public static void PrintBlock(Adresse decNetzId, Adresse decBroadcast, double hostRange, Adresse firstHost, Adresse lastHost, Adresse Subnetmask, char Netclass)
     {
-        string zahl = Convert.ToString(1, 2).PadLeft(8, '0');
-
-        if (first)
-        {
-            zahl = (oktette[oktette.Count - 1] + 1).ToString(); // First Host = Netz-ID +1
-        }
-        else
-        {
-            zahl = (oktette[oktette.Count - 1] - 1).ToString(); // Last Host = BCA - 1
-        }
-
-        return oktette[0] + "." + oktette[1] + "." + oktette[2] + "." + zahl;
+        Console.WriteLine($"\nNetz-ID: {decNetzId.DecAdresse} ({decNetzId.BinAdresse})" +
+                           $"\nBroadcastadresse: {decBroadcast.DecAdresse} ({decBroadcast.BinAdresse})" +
+                           $"\nHost-Range: {hostRange}" +
+                           $"\nErster Host: {firstHost.DecAdresse} ({firstHost.BinAdresse})" +
+                           $"\nLetzter Host: {lastHost.DecAdresse} ({lastHost.BinAdresse})" +
+                           $"\nSubnetzmaske: {Subnetmask.DecAdresse} ({Subnetmask.BinAdresse})" +
+                           $"\nCIDR-Präfix: {Subnetmask.BinAdresse.Count('1')}" +
+                           $"\nNetzklasse: {Netclass}");
     }
 }
