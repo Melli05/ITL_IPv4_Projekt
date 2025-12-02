@@ -7,7 +7,7 @@ namespace KARR_IPv4_24._11
 {
     public static class Funktionen // static, damit Klasse nicht instanziert werden muss
     {
-        public static string AdressenCalc(List<byte> ipOktette, List<byte> snmOktette, bool broadcast = false)
+        public static string AdressenCalc(List<byte> ipOktette, List<byte> snmOktette, bool broadcast)
         {
             string calc_adresse = string.Empty;
 
