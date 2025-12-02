@@ -4,7 +4,7 @@ using System.Text;
 
 namespace KARR_IPv4_24._11
 {
-    internal class Adresse
+    public class Adresse
     {
         public string? DecAdresse {  get; private set; }
         public string? BinAdresse { get; private set; }

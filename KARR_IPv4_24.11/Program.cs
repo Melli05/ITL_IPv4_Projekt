@@ -5,13 +5,54 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        Adresse decIp;
-        Adresse decSnm;
+        Adresse decIp = new();
+        Adresse decSnm = new();
 
         string inputString;
-        char input; // \0 char-Äquivalent zu string.Empty
+        char input;
         int inputZahl;
         int storedCidr = 0;
+        int MenueAuwahl;
+
+        while (true)
+        {
+            Console.Write("Bitte Auswahl treffen:" +
+                            "\n1 - IP-Analyse" +
+                            "\n2 - Subnetze anhand der Anzahl der Subnetze berechnen" +
+                            "\n3 - Subnetze anhand der Anzahl der Hosts berechnen" +
+                            "\n0 - Programm beenden" +
+                            "\nAuswahl: ");
+            MenueAuwahl = int.Parse(Console.ReadLine()!);
+            Console.Clear();
+
+            switch (MenueAuwahl)
+            {
+                case 0:
+                    Environment.Exit(0);
+                    break;
+                case 1:
+                    EnterAdresse(ref decIp, ref decSnm);
+                    CalcNetwork(ref decIp, ref decSnm);
+                    Return();
+                    break;
+                case 2:
+                    OptASubnetCalc(ref decIp, ref decSnm);
+                    Return();
+                    break;
+                case 3:
+                    Return();
+                    break;
+                default:
+                    Console.WriteLine("Keine gültige Auswahl getroffen!\n");
+                    break;
+            }
+        }
+    }
+    public static void EnterAdresse(ref Adresse ipAdresse, ref Adresse snmAdresse)
+    {
+        string inputString;
+        char input;
+        int inputZahl;
 
         while (true)
         {
@@ -21,7 +62,7 @@ internal class Program
             Match match = Regex.Match(inputString!, @"^(((?!25?[6 - 9])[12]\d|[1-9])?\d\.?\b){4}$"); // Regex von Stackoverflow, prüft ob Input gültig
             if (match.Success)
             {
-                decIp = new Adresse(inputString!, true);
+                ipAdresse = new Adresse(inputString!, true);
                 inputString = string.Empty;
                 break;
             }
@@ -30,7 +71,6 @@ internal class Program
                 Console.WriteLine("Bitte eine gültige IP-Adresse im Format XXX.XXX.XXX.XXX angeben!\n");
             }
         }
-
         while (true)
         {
             Console.Write("CIDR-Suffix verwenden? (Y/N) ");
@@ -57,8 +97,7 @@ internal class Program
                 Match match = Regex.Match(inputString!, @"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$"); // Regex von Stackoverflow, prüft ob Input gültig
                 if (match.Success)
                 {
-                    decSnm = new Adresse(inputString!, true);
-                    storedCidr = decSnm.BinAdresse.Count('1');
+                    snmAdresse = new Adresse(inputString!, true);
                     break;
                 }
                 else
@@ -79,8 +118,7 @@ internal class Program
 
                     if (inputZahl <= 32 && inputZahl >= 0)
                     {
-                        storedCidr = inputZahl;
-                        decSnm = new Adresse(inputZahl);
+                        snmAdresse = new Adresse(inputZahl);
                         break;
                     }
                     else
@@ -88,251 +126,113 @@ internal class Program
                         Console.WriteLine("Wert zwischen 0 und 32 angeben.\n");
                     }
                 }
-                catch(Exception x) // Sollten Buchstaben als Input gegeben werden
+                catch (Exception x) // Sollten Buchstaben als Input gegeben werden
                 {
                     Console.WriteLine("Fehler: " + x.Message);
                 }
             }
         }
+    }
 
-        Adresse decNetzId = new Adresse(AdressenCalc(decIp.DecOktette!, decSnm.DecOktette!, false), true);
-        Adresse decBroadcast = new Adresse(AdressenCalc(decIp.DecOktette!, decSnm.DecOktette!, true), true);
-        double hostRange = decSnm.RangeCalc();
+    public static void CalcNetwork(ref Adresse ipAdresse, ref Adresse snmAdresse)
+    {
+        Adresse decNetzId = new Adresse(Funktionen.AdressenCalc(ipAdresse.DecOktette!, snmAdresse.DecOktette!, false), true);
+        Adresse decBroadcast = new Adresse(Funktionen.AdressenCalc(ipAdresse.DecOktette!, snmAdresse.DecOktette!, true), true);
+        double hostRange = snmAdresse.RangeCalc();
         Adresse firstHost = decNetzId + 1;
         Adresse lastHost = decBroadcast - 1;
 
-        char Klasse = NetClassIdentifier(decNetzId);
+        char Klasse = Funktionen.NetClassIdentifier(decNetzId);
 
-        PrintBlock(decNetzId, decBroadcast, hostRange, firstHost, lastHost, decSnm, Klasse);
+        Funktionen.PrintBlock(decNetzId, decBroadcast, hostRange, firstHost, lastHost, snmAdresse, Klasse);
+    }
+
+    public static void Return()
+    {
+        Console.WriteLine("Beliebigen Knopf drücken um zum Menü zurückzukehren.");
+        Console.ReadKey();
+        Console.Clear();
+    }
+
+    public static void OptASubnetCalc(ref Adresse ipAdresse, ref Adresse snmAdresse)
+    {
+        Adresse SubnetMask;
+        List<Adresse> SubnetIDs = new();
+        char input;
+        int inputZahl;
 
         while (true)
         {
-            Console.Write("\nSoll das Netz in Subnetze aufgeteilt werden? (Y/N) ");
-            input = Console.ReadKey().KeyChar;
-            Console.WriteLine();
-
-            if (input == 'Y' || input == 'y')
+            if (ipAdresse.DecAdresse != "" && snmAdresse.DecAdresse != "")
             {
                 while (true)
                 {
-                    Console.Write("\nSollen die Subnetze anhand der Hosts oder der Anzahl der Netze aufgeteilt werden? (H/A)\n H - Anzahl der Hosts\n A - Anzahl der Netze\nAuswahl: ");
+                    Console.Write("\nMöchten Sie die Werte ihrer vorherigen Eingabe übernehmen? (Y/N): ");
                     input = Console.ReadKey().KeyChar;
-                    Console.WriteLine();
 
-                    if (input == 'H' || input == 'h' || input == 'a' || input == 'A')
+                    if (input == 'Y' || input == 'y')
                     {
+                        break;
+                    }
+                    if (input == 'N' || input == 'n')
+                    {
+                        Console.WriteLine();
+                        EnterAdresse(ref ipAdresse, ref snmAdresse);
+                        break;
+                    }
+                }  
+            }
+            else
+            {
+                EnterAdresse(ref ipAdresse, ref snmAdresse);
+            }
+
+            Console.Write("\nBitte die Anzahl der gewünschten Subnetze angeben: ");
+            Console.WriteLine();
+
+            try
+            {
+                inputZahl = int.Parse(Console.ReadLine()!);
+                int storedCidr = snmAdresse.BinAdresse.Count('1');
+
+                if (inputZahl <= Math.Pow(2, snmAdresse.BinAdresse.Count('0')) && inputZahl >= 0) // Math.Log2(inputZahl) um auf die Benötigten Bits zu kommen
+                {
+                    SubnetMask = new Adresse((int)Math.Ceiling(Math.Log2(inputZahl)) + storedCidr);
+                    double HostRange = SubnetMask.RangeCalc();
+
+                    if (HostRange > 0)
+                    {
+                        SubnetIDs = snmAdresse.SubnetCalc(inputZahl, ipAdresse, storedCidr);
+
+                        int count = 1;
+
+                        for (int i = 0; i < SubnetIDs.Count; i++)
+                        {
+                            Console.WriteLine($"{count}. Subnetzwerk:");
+                            var tmp = SubnetIDs[i];               // ansonsten gibt ref einen fehler 
+                            CalcNetwork(ref tmp, ref SubnetMask);
+                            count++;
+                        }
+
+                        Console.WriteLine("\nProgramm beendet.\nFenster kann jetzt geschlossen werden.");
                         break;
                     }
                     else
                     {
-                        Console.WriteLine("Bitte entweder mit Y oder N Auswahl treffen.\n");
+                        Console.WriteLine($"\nZu viele Netze, es wären keine Hosts verfügbar! (Maximal Anzahl = {Math.Pow(2, snmAdresse.BinAdresse.Count('0') - 2)})");
+                        break;
                     }
                 }
-                break;
-            }
-
-            else if (input == 'N' || input == 'n')
-            {
-                Console.WriteLine("\nProgramm beendet.\nFenster kann jetzt geschlossen werden.");
-                break;
-            }
-
-            else
-            {
-                Console.WriteLine("Bitte entweder mit Y oder N Auswahl treffen.\n");
-            }
-        }
-        if(input == 'A' || input == 'a')
-        {
-            Adresse SubnetMask;
-            List<Adresse> SubnetIDs = new();
-
-            while (true)
-            {
-                Console.Write("\nBitte die Anzahl der gewünschten Subnetze angeben: ");
-                try
+                else
                 {
-                    inputZahl = int.Parse(Console.ReadLine()!);
-
-                    if (inputZahl <= Math.Pow(2, decSnm.BinAdresse.Count('0')) && inputZahl >= 0) // Math.Log2(inputZahl) um auf die Benötigten Bits zu kommen
-                    {
-                        SubnetMask = new Adresse((int)Math.Ceiling(Math.Log2(inputZahl))+storedCidr);
-                        double HostRange = SubnetMask.RangeCalc();
-
-                        if (HostRange > 0)
-                        {
-                            SubnetIDs = decSnm.SubnetCalc(inputZahl, decNetzId, storedCidr);
-                            Adresse SubnetBroadcast = new();
-                            Adresse SubnetFirstHosts = new();
-                            Adresse SubnetLastHosts = new();
-
-                            Klasse = NetClassIdentifier(SubnetIDs[0]);
-
-                            int count = 1;
-
-                            foreach (Adresse adresse in SubnetIDs)
-                            {
-                                SubnetBroadcast = new Adresse(AdressenCalc(adresse.DecOktette, SubnetMask.DecOktette, true), true);
-                                SubnetFirstHosts = adresse + 1;
-                                SubnetLastHosts = SubnetBroadcast - 1;
-
-                                Console.WriteLine($"\n{count}. Subnetz:");
-                                PrintBlock(adresse, SubnetBroadcast, HostRange, SubnetFirstHosts, SubnetLastHosts, SubnetMask, Klasse);
-                                count++;
-                            }
-
-                            Console.WriteLine("\nProgramm beendet.\nFenster kann jetzt geschlossen werden.");
-                            break;
-                        }
-                        else
-                        {
-                            Console.WriteLine($"\nZu viele Netze, es wären keine Hosts verfügbar! (Maximal Anzahl = {Math.Pow(2, decSnm.BinAdresse.Count('0')-2)})");
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("Kein plausibler Wert eingegeben.\n");
-                    }
-                }
-                catch (FormatException) // Sollten Buchstaben als Input gegeben werden
-                {
-                    Console.WriteLine("Es wurde keine Zahl eingetippt.");
+                    Console.WriteLine("Kein plausibler Wert eingegeben.\n");
                 }
             }
-        }
-        if (input == 'H' || input == 'h') // Muss noch ausprogrammiert werden
-        {
-            Adresse SubnetMask;
-            List<Adresse> SubnetIDs = new();
-
-            while (true)
+            catch (FormatException) // Sollten Buchstaben als Input gegeben werden
             {
-                Console.Write("\nBitte die Anzahl der gewünschten Adressen pro Subnetz (= Hosts + 2) angeben: ");
-                try
-                {
-                    inputZahl = int.Parse(Console.ReadLine()!);
-
-                    if (Math.Ceiling(Math.Log2(inputZahl)) <= (32 - storedCidr - 1) && inputZahl >= 0) // Math.Log2(inputZahl) um auf die Benötigten Bits zu kommen
-                    {
-                        double BenötigteBits = Math.Floor(32 - Math.Log2(inputZahl) - storedCidr);
-                        SubnetMask = new Adresse((int)BenötigteBits + storedCidr);
-                        double HostRange = SubnetMask.RangeCalc();
-
-                        if (HostRange > 0)
-                        {                            
-                            SubnetIDs = decSnm.SubnetCalc(SubnetTranslate(HostRange), decNetzId, storedCidr);
-                            Adresse SubnetBroadcast = new();
-                            Adresse SubnetFirstHosts = new();
-                            Adresse SubnetLastHosts = new();
-
-                            Klasse = NetClassIdentifier(SubnetIDs[0]);
-
-                            int count = 1;
-
-                            foreach (Adresse adresse in SubnetIDs)
-                            {
-                                SubnetBroadcast = new Adresse(AdressenCalc(adresse.DecOktette, SubnetMask.DecOktette, true), true);
-                                SubnetFirstHosts = adresse + 1;
-                                SubnetLastHosts = SubnetBroadcast - 1;
-
-                                Console.WriteLine($"\n{count}. Subnetz:");
-                                PrintBlock(adresse, SubnetBroadcast, HostRange, SubnetFirstHosts, SubnetLastHosts, SubnetMask, Klasse);
-                                count++;
-                            }
-
-                            Console.WriteLine("\nProgramm beendet.\nFenster kann jetzt geschlossen werden.");
-                            break;
-                        }
-                        else
-                        {
-                            Console.WriteLine($"\nZu viele Netze, es wären keine Hosts verfügbar! (Maximal Anzahl = {Math.Pow(2, decSnm.BinAdresse.Count('0') - 2)})");
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("0 ist kein gültiger Wert. (Mind. 1 Subnetz wird benötigt)\n");
-                    }
-                }
-                catch (FormatException) // Sollten Buchstaben als Input gegeben werden
-                {
-                    Console.WriteLine("Es wurde keine Zahl eingetippt.");
-                }
+                Console.WriteLine("Es wurde keine Zahl eingetippt.");
             }
         }
-    }
-    public static string AdressenCalc(List <byte> ipOktette, List <byte> snmOktette, bool broadcast = false)
-    {
-        string calc_adresse = string.Empty;
 
-        for (int i = 0; i < ipOktette.Count; i++)
-        {
-            int ergebnis_okt;
-
-            if (broadcast)
-            {
-                // Berechnet Broadcast-Adresse durch Invertierten der SNM und bitwise OR
-                ergebnis_okt = (byte)(ipOktette[i] | ~snmOktette[i]); // (byte) weil ~ aus byte ansonsten eine 32-Bit Zahl macht
-            }
-            else
-            {
-                // Berechnet Netz-ID durch bitwise AND
-                ergebnis_okt = ipOktette[i] & snmOktette[i];
-            }
-
-            if (i != ipOktette.Count - 1) calc_adresse += ergebnis_okt.ToString() + ".";  else calc_adresse += ergebnis_okt.ToString();
-        }
-
-        return calc_adresse;
-    }
-
-    public static char NetClassIdentifier(Adresse NetzID)
-    {
-        int dot = NetzID.DecAdresse.IndexOf(".");
-        switch (byte.Parse(NetzID.DecAdresse.Remove(dot)))
-        {
-            case <128:
-                return 'A';
-            case <192:
-                return 'B';
-            case <224:
-                return 'C';
-            case <240:
-                return 'D';
-            default:
-                return 'E';
-        }
-    }
-
-    public static void PrintBlock(Adresse decNetzId, Adresse decBroadcast, double hostRange, Adresse firstHost, Adresse lastHost, Adresse Subnetmask, char Netclass)
-    {
-        Console.WriteLine($"\nNetz-ID: {decNetzId.DecAdresse} ({decNetzId.BinAdresse})" +
-                           $"\nBroadcastadresse: {decBroadcast.DecAdresse} ({decBroadcast.BinAdresse})" +
-                           $"\nHost-Range: {hostRange}" +
-                           $"\nErster Host: {firstHost.DecAdresse} ({firstHost.BinAdresse})" +
-                           $"\nLetzter Host: {lastHost.DecAdresse} ({lastHost.BinAdresse})" +
-                           $"\nSubnetzmaske: {Subnetmask.DecAdresse} ({Subnetmask.BinAdresse})" +
-                           $"\nCIDR-Präfix: {Subnetmask.BinAdresse.Count('1')}" +
-                           $"\nNetzklasse: {Netclass}");
-    }
-
-    public static double SubnetTranslate(double Range)
-    {
-        switch(Range)
-        {
-            case <= 2:
-                return 64;
-            case <= 6:
-                return 32;
-            case <= 14:
-                return 16;
-            case <= 30:
-                return 8;
-            case <= 62:
-                return 4;
-            default:
-                return 2;
-        };
     }
 }
