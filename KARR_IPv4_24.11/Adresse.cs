@@ -141,7 +141,7 @@ namespace KARR_IPv4_24._11
                 if(i == anzahl)
                 {
                     snm = Convert.ToString(i, 2);
-                    BitLen = Convert.ToString(i, 2).Length;
+                    BitLen = Convert.ToString(i, 2).Length; // Damit alle Subnetze eine einheitliche Bitlänge haben, ansonsten wären 001, 010 und 100 gleich
                 }
                 else
                 {

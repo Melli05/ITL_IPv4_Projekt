@@ -72,7 +72,7 @@ internal class Program
         {
             while (true)
             {
-                Console.Write("Bitte die CIDR-Suffix angeben: /");
+                Console.Write("\nBitte die CIDR-Suffix angeben: /");
                 try
                 {
                     inputZahl = int.Parse(Console.ReadLine()!);
@@ -149,7 +149,7 @@ internal class Program
 
             while (true)
             {
-                Console.Write("Bitte die Anzahl der gewünschten Subnetze angeben: ");
+                Console.Write("\nBitte die Anzahl der gewünschten Subnetze angeben: ");
                 try
                 {
                     inputZahl = int.Parse(Console.ReadLine()!);
@@ -186,7 +186,7 @@ internal class Program
                         }
                         else
                         {
-                            Console.WriteLine("\nZu viele Netze, es wären keine Hosts verfügbar!");
+                            Console.WriteLine($"\nZu viele Netze, es wären keine Hosts verfügbar! (Maximal Anzahl = {Math.Pow(2, decSnm.BinAdresse.Count('0')-2)})");
                             break;
                         }
                     }
@@ -208,51 +208,60 @@ internal class Program
 
             while (true)
             {
-                Console.Write("Bitte die Anzahl der gewünschten Hosts angeben: ");
+                Console.Write("\nBitte die Anzahl der gewünschten Adressen pro Subnetz (= Hosts + 2) angeben: ");
                 try
                 {
                     inputZahl = int.Parse(Console.ReadLine()!);
 
-                    if (inputZahl <= Math.Pow(2, decSnm.BinAdresse.Count('0')) && inputZahl >= 0) // Math.Log2(inputZahl) um auf die Benötigten Bits zu kommen
+                    if (Math.Ceiling(Math.Log2(inputZahl)) <= (32 - storedCidr - 1) && inputZahl >= 0) // Math.Log2(inputZahl) um auf die Benötigten Bits zu kommen
                     {
-                        SubnetMask = new Adresse((int)Math.Ceiling(Math.Log2(inputZahl)) + storedCidr);
-                        SubnetIDs = decSnm.SubnetCalc(inputZahl, decNetzId, storedCidr);
-                        Adresse SubnetBroadcast = new();
-                        Adresse SubnetFirstHosts = new();
-                        Adresse SubnetLastHosts = new();
-
+                        double BenötigteBits = Math.Floor(32 - Math.Log2(inputZahl) - storedCidr);
+                        SubnetMask = new Adresse((int)BenötigteBits + storedCidr);
                         double HostRange = SubnetMask.RangeCalc();
-                        Klasse = NetClassIdentifier(SubnetIDs[0]);
 
-                        int count = 1;
+                        if (HostRange > 0)
+                        {                            
+                            SubnetIDs = decSnm.SubnetCalc(SubnetTranslate(HostRange), decNetzId, storedCidr);
+                            Adresse SubnetBroadcast = new();
+                            Adresse SubnetFirstHosts = new();
+                            Adresse SubnetLastHosts = new();
 
-                        foreach (Adresse adresse in SubnetIDs)
-                        {
-                            SubnetBroadcast = new Adresse(AdressenCalc(adresse.DecOktette, SubnetMask.DecOktette, true), true);
-                            SubnetFirstHosts = adresse + 1;
-                            SubnetLastHosts = SubnetBroadcast - 1;
+                            Klasse = NetClassIdentifier(SubnetIDs[0]);
 
-                            Console.WriteLine($"\n{count}. Subnetz:");
-                            PrintBlock(adresse, SubnetBroadcast, HostRange, SubnetFirstHosts, SubnetLastHosts, SubnetMask, Klasse);
-                            count++;
+                            int count = 1;
+
+                            foreach (Adresse adresse in SubnetIDs)
+                            {
+                                SubnetBroadcast = new Adresse(AdressenCalc(adresse.DecOktette, SubnetMask.DecOktette, true), true);
+                                SubnetFirstHosts = adresse + 1;
+                                SubnetLastHosts = SubnetBroadcast - 1;
+
+                                Console.WriteLine($"\n{count}. Subnetz:");
+                                PrintBlock(adresse, SubnetBroadcast, HostRange, SubnetFirstHosts, SubnetLastHosts, SubnetMask, Klasse);
+                                count++;
+                            }
+
+                            Console.WriteLine("\nProgramm beendet.\nFenster kann jetzt geschlossen werden.");
+                            break;
                         }
-
-                        Console.WriteLine("\nProgramm beendet.\nFenster kann jetzt geschlossen werden.");
-                        break;
+                        else
+                        {
+                            Console.WriteLine($"\nZu viele Netze, es wären keine Hosts verfügbar! (Maximal Anzahl = {Math.Pow(2, decSnm.BinAdresse.Count('0') - 2)})");
+                            break;
+                        }
                     }
                     else
                     {
-                        Console.WriteLine("Kein plausibler Wert eingegeben.\n");
+                        Console.WriteLine("0 ist kein gültiger Wert. (Mind. 1 Subnetz wird benötigt)\n");
                     }
                 }
-                catch (Exception x) // Sollten Buchstaben als Input gegeben werden
+                catch (FormatException) // Sollten Buchstaben als Input gegeben werden
                 {
-                    Console.WriteLine("Fehler: " + x.Message);
+                    Console.WriteLine("Es wurde keine Zahl eingetippt.");
                 }
             }
         }
     }
-    
     public static string AdressenCalc(List <byte> ipOktette, List <byte> snmOktette, bool broadcast = false)
     {
         string calc_adresse = string.Empty;
@@ -306,5 +315,24 @@ internal class Program
                            $"\nSubnetzmaske: {Subnetmask.DecAdresse} ({Subnetmask.BinAdresse})" +
                            $"\nCIDR-Präfix: {Subnetmask.BinAdresse.Count('1')}" +
                            $"\nNetzklasse: {Netclass}");
+    }
+
+    public static double SubnetTranslate(double Range)
+    {
+        switch(Range)
+        {
+            case <= 2:
+                return 64;
+            case <= 6:
+                return 32;
+            case <= 14:
+                return 16;
+            case <= 30:
+                return 8;
+            case <= 62:
+                return 4;
+            default:
+                return 2;
+        };
     }
 }
