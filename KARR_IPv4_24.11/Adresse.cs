@@ -42,43 +42,43 @@ namespace KARR_IPv4_24._11
                 DecOktette.Add(Convert.ToByte(oktett));
             }
         }
+        
         // Operator Overload
         public static Adresse operator+(Adresse adresse, byte zahl)
         {
             Adresse rückgabe = new();
             
-            for(int i = 0; i < adresse.DecOktette.Count; i++)
+            for(int i = 0; i < adresse.DecOktette!.Count; i++)
             {
                 if(i == 3)
                 {
-                    rückgabe.DecOktette.Add((byte)(adresse.DecOktette[i] + zahl));
+                    rückgabe.DecOktette!.Add((byte)(adresse.DecOktette[i] + zahl));
                 }
                 else
                 {
-                    rückgabe.DecOktette.Add(adresse.DecOktette[i]);
+                    rückgabe.DecOktette!.Add(adresse.DecOktette[i]);
                 }
             }
-            rückgabe.DecAdresse = $"{rückgabe.DecOktette[0]}.{rückgabe.DecOktette[1]}.{rückgabe.DecOktette[2]}.{rückgabe.DecOktette[3]}";
+            rückgabe.DecAdresse = $"{rückgabe.DecOktette![0]}.{rückgabe.DecOktette[1]}.{rückgabe.DecOktette[2]}.{rückgabe.DecOktette[3]}";
             rückgabe.BinAdresse = rückgabe.ConvertDecAndBin(rückgabe.DecAdresse.Split('.'), true);
             return rückgabe;
         }
-
         public static Adresse operator -(Adresse adresse, byte zahl)
         {
             Adresse rückgabe = new();
 
-            for (int i = 0; i < adresse.DecOktette.Count; i++)
+            for (int i = 0; i < adresse.DecOktette!.Count; i++)
             {
                 if (i == 3)
                 {
-                    rückgabe.DecOktette.Add((byte)(adresse.DecOktette[i] - zahl));
+                    rückgabe.DecOktette!.Add((byte)(adresse.DecOktette[i] - zahl));
                 }
                 else
                 {
-                    rückgabe.DecOktette.Add(adresse.DecOktette[i]);
+                    rückgabe.DecOktette!.Add(adresse.DecOktette[i]);
                 }
             }
-            rückgabe.DecAdresse = $"{rückgabe.DecOktette[0]}.{rückgabe.DecOktette[1]}.{rückgabe.DecOktette[2]}.{rückgabe.DecOktette[3]}";
+            rückgabe.DecAdresse = $"{rückgabe.DecOktette![0]}.{rückgabe.DecOktette[1]}.{rückgabe.DecOktette[2]}.{rückgabe.DecOktette[3]}";
             rückgabe.BinAdresse = rückgabe.ConvertDecAndBin(rückgabe.DecAdresse.Split('.'), true);
             return rückgabe;
         }
@@ -103,7 +103,6 @@ namespace KARR_IPv4_24._11
 
             return adresse.Remove(adresse.Length - 1);
         }
-
         private string CidrToBin(int cidr)
         {
             string snm = string.Empty;
@@ -111,32 +110,37 @@ namespace KARR_IPv4_24._11
             snm += new string('1', cidr); // fügt 1 ein
             snm += new string('0', 32 - cidr); // fügt 0 ein
 
-            snm = snm.Insert(24, ".");
-            snm = snm.Insert(16, ".");
-            snm = snm.Insert(8, ".");
+            snm = InsertDots(snm);
 
             return snm;
         }
+        private string InsertDots(string adresse)
+        {
+            // fügt die . an die entsprechenden Stellen der dezimalen Adresse
+            adresse = adresse.Insert(24, ".");
+            adresse = adresse.Insert(16, ".");
+            adresse = adresse.Insert(8, ".");
 
+            return adresse;
+        }
         public double RangeCalc()
         {
-            int zero_count = BinAdresse.Replace(".", "").Count('0'); // Zählt 0 für Host-Teil
+            int zero_count = BinAdresse!.Replace(".", "").Count('0'); // Zählt 0 für Host-Teil
 
             return Math.Pow(2, zero_count) - 2;
-        }
-    
+        }   
         public List <Adresse> SubnetCalc(double InputZahl, Adresse NetzID, int Cidr)
         {
             List <Adresse> Subnetze = new();
-            List <string> IDs = new();
-            List <string> Masks = new();
+            List <string> SubnetBits = new();
+            List <string> SubnetIDs = new();
             int BitLen = 0;
             int anzahl = (int)InputZahl - 1;
             string snm;
 
-            string mask = NetzID.BinAdresse.Replace(".", "").Remove(Cidr);
+            string BaseMask = NetzID.BinAdresse!.Replace(".", "").Remove(Cidr);
 
-            for(int i = anzahl; i >=0; i--)
+            for(int i = anzahl; i >=0; i--) // absteigend, damit sich an der größten (binären) Zahl orientiert werden kann
             {
                 if(i == anzahl)
                 {
@@ -148,24 +152,21 @@ namespace KARR_IPv4_24._11
                     snm = Convert.ToString(i, 2).PadLeft(BitLen, '0');
                 }
 
-                IDs.Add(snm);
+                SubnetBits.Add(snm);
             }
 
-            IDs.Reverse();
+            SubnetBits.Reverse(); // mit Subnetzmasken aufsteigend gereiht werden
 
-            foreach(string id in IDs)
+            foreach(string IdentifyingBit in SubnetBits)
             {
-                string adresse = Convert.ToString(mask + id).PadRight(32, '0');
-                adresse = adresse.Insert(24, ".");
-                adresse = adresse.Insert(16, ".");
-                adresse = adresse.Insert(8, ".");
-
-                Masks.Add(adresse);
+                string adresse = Convert.ToString(BaseMask + IdentifyingBit).PadRight(32, '0'); //Setzt vollständige Subnetzmaske zusammen, weil alle Host-Bits 0 sind sind es gleichzeitig die Netz-IDs
+                adresse = InsertDots(adresse);
+                SubnetIDs.Add(adresse);
             }
 
-            foreach(string subnetzmaske in Masks)
+            foreach(string subnetzmaske in SubnetIDs)
             {
-                Subnetze.Add(new Adresse(subnetzmaske, false));
+                Subnetze.Add(new Adresse(subnetzmaske, false)); // false, weil BinToDec konvertiert werden muss
             }
 
             return Subnetze; // Gibt die Netz-IDs zurück
