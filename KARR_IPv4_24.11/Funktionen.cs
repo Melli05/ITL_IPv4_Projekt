@@ -121,11 +121,13 @@ namespace KARR_IPv4_24._11
                                 properSubnet = false;
                                 break;
                             }
+
                             properSubnet = true;
                         }
                         else
                         {
                             Console.WriteLine("Ungültige Subnetzmaske!");
+                            properSubnet = false;
                             break;
                         }
                     }
