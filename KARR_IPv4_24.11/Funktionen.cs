@@ -108,9 +108,30 @@ namespace KARR_IPv4_24._11
                 {
                     Console.Write("Bitte die Subnetzmaske angeben: ");
                     inputString = Console.ReadLine()!;
+                    string[] Okt = inputString.Split('.');
+                    bool properSubnet = false;
+
+                    for (int i = 1; i < Okt.Count() - 1; i++)
+                    {
+                        if (int.Parse(Okt[i]) <= int.Parse(Okt[i-1])) // Prüft ob das hintere Oktett kleiner gleich dem vorderen Oktett ist
+                        {
+                            if (int.Parse(Okt[i-1]) != 255 && int.Parse(Okt[i]) > 0) // Wenn vorderes Oktett < 255, MUSS hinteres Oktett 0 sein
+                            {
+                                Console.WriteLine("Ungültige Subnetzmaske!");
+                                properSubnet = false;
+                                break;
+                            }
+                            properSubnet = true;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Ungültige Subnetzmaske!");
+                            break;
+                        }
+                    }
 
                     Match match = Regex.Match(inputString!, @"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$"); // Regex von Stackoverflow, prüft ob Input gültig
-                    if (match.Success)
+                    if (match.Success && properSubnet)
                     {
                         snmAdresse = new Adresse(inputString!, true);
                         break;
